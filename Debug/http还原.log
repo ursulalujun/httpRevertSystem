@@ -1,0 +1,15 @@
+﻿  数据包捕获.cpp
+D:\Documents\综合课设\http还原\数据包捕获.cpp(102,15): warning C4101: “ltime”: 未引用的局部变量
+D:\Documents\综合课设\http还原\数据包捕获.cpp(106,12): warning C4101: “local_tv_sec”: 未引用的局部变量
+D:\Documents\综合课设\http还原\数据包捕获.cpp(104,25): warning C4101: “header”: 未引用的局部变量
+D:\Documents\综合课设\http还原\数据包捕获.cpp(103,10): warning C4101: “timestr”: 未引用的局部变量
+D:\Documents\综合课设\http还原\数据包捕获.cpp(7,9): warning C4101: “res”: 未引用的局部变量
+D:\Documents\综合课设\http还原\数据包捕获.cpp(107,13): warning C4101: “fp”: 未引用的局部变量
+D:\Documents\综合课设\http还原\数据包捕获.cpp(105,19): warning C4101: “pkt_data”: 未引用的局部变量
+D:\Documents\综合课设\http还原\数据包捕获.cpp(231,15): warning C4101: “ltime”: 未引用的局部变量
+D:\Documents\综合课设\http还原\数据包捕获.cpp(235,12): warning C4101: “local_tv_sec”: 未引用的局部变量
+D:\Documents\综合课设\http还原\数据包捕获.cpp(233,25): warning C4101: “header”: 未引用的局部变量
+D:\Documents\综合课设\http还原\数据包捕获.cpp(232,10): warning C4101: “timestr”: 未引用的局部变量
+D:\Documents\综合课设\http还原\数据包捕获.cpp(236,13): warning C4101: “fp”: 未引用的局部变量
+D:\Documents\综合课设\http还原\数据包捕获.cpp(234,19): warning C4101: “pkt_data”: 未引用的局部变量
+  http还原.vcxproj -> D:\Documents\综合课设\http还原\Debug\http还原.exe
