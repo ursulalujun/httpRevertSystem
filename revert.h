@@ -12,23 +12,17 @@ typedef struct ip_address {
 
 /* IPv4 header */
 typedef struct ip_header {
-#ifdef WORDS_BIGENDIAN
-    u_char ip_version : 4, header_length : 4;
-#else
-    u_char header_length : 4, ip_version : 4;
-#endif
-
-    u_char ver_ihl;		// 版本以及首部长度，各4位
-    u_char tos;			// 服务质量
-    u_short tlen;		// 总长度
-    u_short identification;		// 身份识别
-    u_short offset;			// 分组偏移
-    u_char ttl;			// 生命周期
-    u_char proto;		// 协议类型
-    u_short checksum;		// 包头测验码
-    ip_address saddr;	// 源IP地址
-    ip_address daddr;	// 目的IP地址
-    u_int op_pad;		//可选 填充字段
+    u_char  ver_ihl;        // Version (4 bits) + Internet header length (4 bits)
+    u_char  tos;            // Type of service 
+    u_short tlen;           // Total length 
+    u_short identification; // Identification
+    u_short flags_fo;       // Flags (3 bits) + Fragment offset (13 bits)
+    u_char  ttl;            // Time to live
+    u_char  proto;          // Protocol
+    u_short crc;            // Header checksum
+    ip_address  saddr;      // Source address
+    ip_address  daddr;      // Destination address
+    u_int   op_pad;         // Option + Padding
 }ip_header;
 
 // 保存TCP首部
@@ -57,8 +51,14 @@ int ip_revert(u_char* argument,
     const u_char* pkt_data);
 int tcp_revert(u_char* argument,
     const struct pcap_pkthdr* header,
-    const u_char* pkt_data);
-int http_revert(u_char* argument,
+    const u_char* pkt_data,
+    int& tcp_header_length);
+int request_revert(u_char* argument,
     const struct pcap_pkthdr* header,
-    const u_char* pkt_data);
+    const u_char* pkt_data,
+    int tcp_header_length);
+int respond_revert(u_char* argument,
+    const struct pcap_pkthdr* header,
+    const u_char* pkt_data,
+    int tcp_header_length);
 

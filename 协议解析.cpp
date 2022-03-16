@@ -52,10 +52,21 @@ int read_file(struct pcap_pkthdr*& header,
 
     while ((res = pcap_next_ex(fp, &header, &pkt_data)) >= 0)
     {
-        /* print pkt timestamp and pkt len */
+        /* 调试代码
+        ip_header* ih;
+        u_int ip_len;
+        //retireve the position of the ip header 
+        ih = (ip_header*)(pkt_data +
+            14); //length of ethernet header
+
+        // retireve the position of the udp header 
+        ip_len = (ih->ver_ihl & 0xf) * 4;
+        printf("\n%.2x\n", ip_len);
+
+        printf("\n%.2x\n", ih->proto);
+
         printf("%ld:%ld (%ld)\n", header->ts.tv_sec, header->ts.tv_usec, header->len);
 
-        /* Print the packet */
         for (i = 1; (i < header->caplen + 1); i++)
         {
             printf("%.2x ", pkt_data[i - 1]);
@@ -63,9 +74,8 @@ int read_file(struct pcap_pkthdr*& header,
         }
 
         printf("\n\n");
-
+        */
         res = ip_revert(NULL, header, pkt_data);
-
     }
 
 
@@ -84,10 +94,13 @@ int ip_revert(
     const u_char* pkt_data
 ) {
     struct ip_header* ip_protocol;
+    int res = 0;
+    int i;
+    int tcp_header_length;
+    /*
     u_int header_length;
     u_char tos;
     u_short checksum;
-    int res = 0;
 
     ip_address saddr;
     ip_address daddr;
@@ -95,6 +108,7 @@ int ip_revert(
     u_short tlen;
     u_short identification;
     u_short offset;
+    */
 
     //packet_header是winpcap加上的捕获信息，真正的ip_header还是在packet_content里
     ip_protocol = (struct ip_header*)(pkt_data + 14);//length of ethernet header
@@ -113,10 +127,9 @@ int ip_revert(
     //printf("IP: %d%d%c%d%d%d\n", saddr, daddr, ttl, identification, tlen, offset);
     //fprintf(fp, "%d%d%c%d%d%d", saddr, daddr, ttl, identification, tlen, offset);
     */
-   
-    printf("%d\n", ip_protocol->proto);
+    //printf("%d\n", ip_protocol->proto);
     if (ip_protocol->proto==6) {
-        res=tcp_revert(argument, header, pkt_data);
+        res=tcp_revert(argument, header, pkt_data, tcp_header_length);
         return res;
     }
     return 0;
@@ -125,7 +138,8 @@ int ip_revert(
 int tcp_revert(
     u_char* argument,
     const struct pcap_pkthdr* header,
-    const u_char* pkt_data
+    const u_char* pkt_data,
+    int& tcp_header_length
 ) {
     struct tcp_header* tcp_protocol;
     u_short sport;
@@ -139,6 +153,7 @@ int tcp_revert(
     u_char flags;
     int res;
   
+    
     tcp_protocol = (struct tcp_header*)(pkt_data + 14 + 20);//跳过mac协议和ip协议 
     sport = ntohs(tcp_protocol->sport);
     dport = ntohs(tcp_protocol->dport);
@@ -149,30 +164,63 @@ int tcp_revert(
     urgent_pointer = ntohs(tcp_protocol->urgent_pointer);
     flags = tcp_protocol->flags;
     checksum = ntohs(tcp_protocol->checksum);
-
-    printf("TCP: %d0%d%d%c%d\n", header_length, sport, dport, flags, windows);
+    tcp_header_length = header_length;
+    printf("\nTCP:%d\n", header_length);
+    //printf("TCP: %d0%d%d%c%d\n", header_length, sport, dport, flags, windows);
     //fprintf(fp, "%d0%d%d%c%d", header_length, sport, dport, flags, windows);
-
-    if (dport == 80)
+    if (flags & 0x08)
     {
-        res=http_revert(argument, header, pkt_data);
-        return res;
+        printf("PSH"); 
+        printf("dport: %d, sport: %d\n", dport, sport);
+        return 0;
     }
-    
-    return 0;
-    /*if (flags & 0x08) printf("PSH");
     if (flags & 0x10) printf("ACK");
     if (flags & 0x02) printf("SYN");
     if (flags & 0x20) printf("URG");
     if (flags & 0x01) printf("FIN");
     if (flags & 0x04) printf("RST");
-    printf("\n");*/
+    printf("\n");
+
+    printf("dport: %d, sport: %d\n", dport, sport);
+    if (dport == 80)
+    {
+        res=request_revert(argument, header, pkt_data, tcp_header_length);
+        return res;
+    }
+    else if(sport == 80)
+    {
+        res = respond_revert(argument, header, pkt_data, tcp_header_length);
+    }
+    return 0;
+    
 }
 
-int http_revert(
+int request_revert(
     u_char* argument,
     const struct pcap_pkthdr* header,
-    const u_char* pkt_data
+    const u_char* pkt_data,
+    int tcp_header_length
 ) {
+    int i;
+    for (i = (14 + 20 + tcp_header_length); i < header->caplen ; i++)
+    {
+        printf("%c", pkt_data[i]);
+        //if ((i % LINE_LEN) == 0) printf("\n");
+    }
+    return 0;
+}
+
+int respond_revert(
+    u_char* argument,
+    const struct pcap_pkthdr* header,
+    const u_char* pkt_data,
+    int tcp_header_length
+) {
+    int i;
+    for (i = (14 + 20 + tcp_header_length); i < header->caplen; i++)
+    {
+        printf("%c", pkt_data[i]);
+        //if ((i % LINE_LEN) == 0) printf("\n");
+    }
     return 0;
 }

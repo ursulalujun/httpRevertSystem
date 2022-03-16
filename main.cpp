@@ -6,6 +6,6 @@ int propotoral_revert();
 
 int main()
 {
-    packet_capture(3);
+    packet_capture(10);
     propotoral_revert();
 }
