@@ -1,7 +1,6 @@
 #include "capture.h"
 
-int packet_capture(int cnt)
-{  
+int packet_capture(int cnt){  
     pcap_if_t* d;
     pcap_t* adhandle;
     int res;
@@ -18,8 +17,7 @@ int packet_capture(int cnt)
 
 }
 
-int get_device(pcap_if_t*& d, pcap_t*& adhandle)
-{
+int get_device(pcap_if_t*& d, pcap_t*& adhandle){
     pcap_if_t* alldevs;
     int inum;
     int i = 0;
@@ -79,8 +77,7 @@ int get_device(pcap_if_t*& d, pcap_t*& adhandle)
     return 0;
 }
 
-int set_filter(pcap_if_t*& d, pcap_t*& adhandle)
-{
+int set_filter(pcap_if_t*& d, pcap_t*& adhandle){
     u_int netmask;
     char packet_filter[] = "tcp port 80";//若没有指定，默认dst or src
     struct bpf_program fcode;
@@ -123,8 +120,7 @@ int set_filter(pcap_if_t*& d, pcap_t*& adhandle)
     return 0;
 }
 
-int save_packet(pcap_t*& adhandle, int cnt)
-{
+int save_packet(pcap_t*& adhandle, int cnt){
     struct tm ltime;
     char timestr[16];
     struct pcap_pkthdr* header;
@@ -143,8 +139,7 @@ int save_packet(pcap_t*& adhandle, int cnt)
 
 /* Callback function invoked by libpcap for every incoming packet */
 
-void packet_handler(u_char* dumpfile, const struct pcap_pkthdr* header, const u_char* pkt_data)
-{
+void packet_handler(u_char* dumpfile, const struct pcap_pkthdr* header, const u_char* pkt_data){
     struct tm ltime;
     char timestr[16];
     time_t local_tv_sec;

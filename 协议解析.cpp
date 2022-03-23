@@ -202,10 +202,22 @@ int request_revert(
     int tcp_header_length
 ) {
     int i;
-    for (i = (14 + 20 + tcp_header_length); i < header->caplen ; i++)
+    char method[10];
+    char URL[50];
+    char http[10];
+    int http_start = 14 + 20 + tcp_header_length;
+    for (i = http_start; i < header->caplen ; i++)
     {
-        printf("%c", pkt_data[i]);
-        //if ((i % LINE_LEN) == 0) printf("\n");
+        printf("%c", pkt_data[i]); 
+        /*
+        int j = http_start;
+        for (int k = 0;pkt_data[j] != ' ';j++, k++){
+            method[k] = pkt_data[j];
+        }
+        for (int k = 0;pkt_data[j] != ' ';j++, k++) {
+            URL[k] = pkt_data[j];
+        }
+        */
     }
     return 0;
 }
@@ -217,10 +229,192 @@ int respond_revert(
     int tcp_header_length
 ) {
     int i;
-    for (i = (14 + 20 + tcp_header_length); i < header->caplen; i++)
+    struct key_word key;//要初始化为0
+    char* content;
+    int http_head_start;
+    int http_body_start;
+    //Trie t;
+    http_head_start = 14 + 20 + tcp_header_length;
+    if (pkt_data[http_head_start] == 'H' && pkt_data[http_head_start + 1] == 'T'
+        && pkt_data[http_head_start + 2] == 'T' && pkt_data[http_head_start + 3] == 'P')
     {
-        printf("%c", pkt_data[i]);
-        //if ((i % LINE_LEN) == 0) printf("\n");
+        /* 将协议头部写入文件后按单词读取 */
+        //u_char不能直接写入文件，所以要用content转换成char之后再写入
+        content = (char*)malloc(header->caplen * sizeof(char));
+        for (i = http_head_start; i < header->caplen; i++)
+        {
+            //两个回车表示头部结束
+            if (pkt_data[i] == '\r' && pkt_data[i + 1] == '\n'
+                && pkt_data[i + 2] == '\r' && pkt_data[i + 3] == '\n')
+                break;
+            printf("%c", pkt_data[i]);
+            content[i - http_head_start] = pkt_data[i];
+        }
+        http_body_start = i + 4;
+        content[i - http_head_start] = '\0';
+        FILE* temp;
+        temp = fopen("test2.txt", "w+");
+        fputs(content, temp);
+        fclose(temp);
+        http_head_parse(key);
+        http_handling(key, pkt_data, http_body_start);
+    }   
+    return 0;
+}
+
+int match_head(char* s) {
+    const struct key_mode mode;
+    if (strcmp(s, mode.encoding) == 0)
+        return 1;
+    else if (strcmp(s, mode.length) == 0)
+        return 2;
+    else if (strcmp(s, mode.type) == 0)
+        return 3;
+    else if (strcmp(s, mode.chunked) == 0)
+        return 4;
+    else
+        return 0;
+}
+
+int match_type(char* s) {
+    if (strstr(s, "image"))
+        return 1;
+    else if (strstr(s, "application"))
+        return 2;
+    else if (strstr(s, "text"))
+        return 3;
+    else
+        return 0;
+}
+
+
+int http_head_parse(struct key_word& key) {
+    char http_version[50];
+    char status[50];
+    char modifier[50];
+    FILE* fp;
+    fp = fopen("test2.txt", "r");
+    fscanf(fp, "%s %s %s", http_version, status, modifier);
+    while (1) {
+        char  tmp1[50], tmp2[50];
+        fscanf(fp, "%s", tmp1);
+        int type = match_head(tmp1);
+        //t.find(head_name, type);
+        if (type != 0 && type != 4) fscanf(fp, "%s", tmp2);
+        switch (type) {
+        case 1: strcpy(key.Content_Encoding, tmp2);break;
+        case 2: strcpy(key.Content_Length, tmp2);break;
+        case 3: strcpy(key.Content_Type, tmp2);break;
+        case 4: key.if_chunked = 1;break;
+        }
+        if (feof(fp)) break;
+    }
+    fclose(fp);
+    return 0;
+}
+
+int http_handling(struct key_word key, const u_char* pkt_data,
+int body_start) {
+    int res = 0;
+    if (key.Content_Type) {
+        res = match_type(key.Content_Type);
+        switch (res) {
+        case 1: save_image(key, pkt_data, body_start);break;
+        case 2: save_application(key, pkt_data, body_start);break;
+        case 3: handle_txt(key, pkt_data, body_start);break;
+        }
     }
     return 0;
 }
+
+void handle_chunked() {
+
+}
+
+int save_image(struct key_word key, const u_char* pkt_data,
+    int body_start) {
+    if (key.Content_Encoding)
+        printf("The image is encoded by %s\n", key.Content_Encoding);
+    else
+        printf("The image is not encoded.\n");
+    printf("This image will be stored in .\n");
+    if (key.if_chunked) {
+        printf("chunked");
+        handle_chunked();
+    }
+    else {
+        //保存图片的后缀名即为图片的格式
+        //内容格式image/图片格式，跳过"image/"
+        char* picture_type = key.Content_Type + 6;
+        printf("%s", picture_type);
+    }
+    FILE* fp;
+    fp = fopen("picture.txt", "w");
+    fclose(fp);
+    return 0;
+}
+
+int save_application(struct key_word key, const u_char* pkt_data,
+    int body_start) {
+    char* data = (char*)pkt_data;
+    if (key.Content_Encoding)
+        printf("The application is encoded by %s", key.Content_Encoding);
+    else
+        printf("The application is not encoded.");
+    if (key.if_chunked) {
+        handle_chunked();
+    }
+    else {
+        FILE* fp;
+        fp = fopen("application.txt", "a+");
+        fprintf(fp, "Date: %s", __DATE__);
+        fputs(data + body_start, fp);
+    }
+    return 0;
+}
+
+int handle_txt(struct key_word key, const u_char* pkt_data,
+    int body_start) {
+    return 0;
+}
+/*
+class Trie {
+public:
+    int nex[50][26], cnt;
+    bool exist[50];  // 该结点结尾的字符串是否存在
+
+    void insert(char* s) {  // 插入字符串
+        int p = 0;
+        int l = strlen(s);
+        for (int i = 0; i < l; i++) {
+            if ('A' <= s[i] <= 'Z')
+                s[i] = s[i] + 32;//统一大小写，不区分查找
+            int c = s[i] - 'a';
+            if (!nex[p][c]) nex[p][c] = ++cnt;  // 如果没有，就添加结点
+            p = nex[p][c];
+        }
+        exist[p] = 1;
+    }
+
+    bool find(char* s, int& type) {  // 查找字符串
+        int p = 0;
+        int l = strlen(s);
+        for (int i = 0; i < l; i++) {
+            if ('A' <= s[i] <= 'Z')
+                s[i] = s[i] + 32;//统一大小写，不区分查找
+            int c = s[i] - 'a';
+            if (!nex[p][c]) return 0;
+            p = nex[p][c];
+        }
+        type = p;
+        return exist[p];
+    }
+};
+
+void create_trie(Trie t) {
+    t.insert("Content-T");
+    t.insert("Content-Le");
+    t.insert("Content-E");
+    t.insert("chunked");
+}
+*/

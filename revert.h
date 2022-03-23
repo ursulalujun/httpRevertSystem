@@ -1,17 +1,21 @@
 #pragma once
 #include "pcap.h"
+#include <string>
+#include <stdio.h>
+#include <stdlib.h>
 #define LINE_LEN 16
+using namespace std;
 
 /* 4 bytes IP address */
-typedef struct ip_address {
+struct ip_address {
     u_char byte1;
     u_char byte2;
     u_char byte3;
     u_char byte4;
-}ip_address;
+};
 
 /* IPv4 header */
-typedef struct ip_header {
+struct ip_header {
     u_char  ver_ihl;        // Version (4 bits) + Internet header length (4 bits)
     u_char  tos;            // Type of service 
     u_short tlen;           // Total length 
@@ -23,10 +27,10 @@ typedef struct ip_header {
     ip_address  saddr;      // Source address
     ip_address  daddr;      // Destination address
     u_int   op_pad;         // Option + Padding
-}ip_header;
+};
 
 // 保存TCP首部
-typedef struct tcp_header {
+struct tcp_header {
     u_short sport;
     u_short dport;
     u_int sequence;		// 序列码
@@ -42,7 +46,23 @@ typedef struct tcp_header {
     u_short windows;			// 窗口大小
     u_short checksum;			// 校验和
     u_short urgent_pointer;		// 紧急指针
-}tcp_header;
+};
+
+struct key_word {
+    char Content_Type[20];
+    char Content_Length[20];
+    char Content_Encoding[20];
+    bool if_chunked;
+};
+
+struct key_mode {
+    char* type = "Content-Type:";
+    char* length = "Content-Length:";
+    char* encoding = "Content-Encoding:";
+    char* chunked = "chunked";
+};
+
+//class Trie;
 
 int read_file(struct pcap_pkthdr*& header,
     const u_char*& pkt_data);
@@ -62,3 +82,16 @@ int respond_revert(u_char* argument,
     const u_char* pkt_data,
     int tcp_header_length);
 
+//void create_trie(Trie t);
+int match_head(char* s);
+int match_type(char* s);
+int http_head_parse(struct key_word& key);
+int http_handling(struct key_word key, const u_char* pkt_data,
+    int body_start);
+void handle_chunked();
+int save_image(struct key_word key, const u_char* pkt_data,
+    int body_start);
+int save_application(struct key_word key, const u_char* pkt_data,
+    int body_start);
+int handle_txt(struct key_word key, const u_char* pkt_data,
+    int body_start);
