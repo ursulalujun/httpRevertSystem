@@ -1,177 +1,61 @@
 # include "revert.h"
+# include <string>
+#include <iostream>
+#include <fstream>
+using namespace std;
 
-int propotoral_revert()
-{
-    int res;
+class Http_identifier {
+public:
+    u_char* argument;
     struct pcap_pkthdr* header;
     const u_char* pkt_data;
-    res=read_file(header, pkt_data);
-    return res;
+    struct pkt_node* ppkt;
+    void init(struct pcap_pkthdr* header,
+        const u_char* pkt_data, struct pkt_node* ppkt);
+    int ip_revert();
+    int tcp_revert();
+};
+
+void Http_identifier::init(struct pcap_pkthdr* header,
+    const u_char* pkt_data, struct pkt_node* ppkt) {
+    this->header = header;
+    this->pkt_data = pkt_data;
+    this->ppkt = ppkt;
 }
 
-int read_file(struct pcap_pkthdr*& header,
-    const u_char*& pkt_data)
-{
-    time_t local_tv_sec;
-    pcap_t* fp;
-    pcap_dumper_t* dumpfile;
-    char errbuf[PCAP_ERRBUF_SIZE];
-    const char* path = "test.txt";
-    char source[PCAP_BUF_SIZE];
-    int res = 0;
-    int i = 0;
-
-    /* 读取转存的数据包 */
-    /* Create the source string according to the new WinPcap syntax */
-    if (pcap_createsrcstr(source,         // variable that will keep the source string
-        PCAP_SRC_FILE,  // we want to open a file
-        NULL,           // remote host
-        NULL,           // port on the remote host
-        path,        // name of the file we want to open
-        errbuf          // error buffer
-    ) != 0)
-    {
-        fprintf(stderr, "\nError creating a source string\n");
-        return -1;
-    }
-
-    /* Open the capture file */
-    if ((fp = pcap_open(source,         // name of the device
-        65536,          // portion of the packet to capture
-                        // 65536 guarantees that the whole packet will be captured on all the link layers
-        PCAP_OPENFLAG_PROMISCUOUS,     // promiscuous mode 混合模式
-        1000,              // read timeout
-        NULL,              // authentication on the remote machine
-        errbuf         // error buffer
-    )) == NULL)
-    {
-        fprintf(stderr, "\nUnable to open the file %s.\n", source);
-        return -1;
-    }
-
-
-    while ((res = pcap_next_ex(fp, &header, &pkt_data)) >= 0)
-    {
-        /* 调试代码
-        ip_header* ih;
-        u_int ip_len;
-        //retireve the position of the ip header 
-        ih = (ip_header*)(pkt_data +
-            14); //length of ethernet header
-
-        // retireve the position of the udp header 
-        ip_len = (ih->ver_ihl & 0xf) * 4;
-        printf("\n%.2x\n", ip_len);
-
-        printf("\n%.2x\n", ih->proto);
-
-        printf("%ld:%ld (%ld)\n", header->ts.tv_sec, header->ts.tv_usec, header->len);
-
-        for (i = 1; (i < header->caplen + 1); i++)
-        {
-            printf("%.2x ", pkt_data[i - 1]);
-            if ((i % LINE_LEN) == 0) printf("\n");
-        }
-
-        printf("\n\n");
-        */
-        res = ip_revert(NULL, header, pkt_data);
-    }
-
-
-    if (res == -1)
-    {
-        printf("Error reading the packets: %s\n", pcap_geterr(fp));
-        return -1;
-    }
-
-    return 0;       
-}
-
-int ip_revert(
-    u_char* argument,
-    const struct pcap_pkthdr* header,
-    const u_char* pkt_data
-) {
+int Http_identifier::ip_revert() {
     struct ip_header* ip_protocol;
     int res = 0;
-    int i;
     int tcp_header_length;
-    /*
-    u_int header_length;
-    u_char tos;
-    u_short checksum;
-
-    ip_address saddr;
-    ip_address daddr;
-    u_char ttl;
-    u_short tlen;
-    u_short identification;
-    u_short offset;
-    */
 
     //packet_header是winpcap加上的捕获信息，真正的ip_header还是在packet_content里
     ip_protocol = (struct ip_header*)(pkt_data + 14);//length of ethernet header
-    /*
-    header_length = ip_protocol->header_length * 4;
-    checksum = ntohs(ip_protocol->checksum);
-    tos = ip_protocol->tos;
-    offset = ntohs(ip_protocol->offset);
 
-    saddr = ip_protocol->saddr;
-    daddr = ip_protocol->daddr;
-    ttl = ip_protocol->ttl;
-    identification = ip_protocol->identification;
-    tlen = ip_protocol->tlen;
-    offset = ip_protocol->offset;
-    //printf("IP: %d%d%c%d%d%d\n", saddr, daddr, ttl, identification, tlen, offset);
-    //fprintf(fp, "%d%d%c%d%d%d", saddr, daddr, ttl, identification, tlen, offset);
-    */
-    //printf("%d\n", ip_protocol->proto);
-    if (ip_protocol->proto==6) {
-        res=tcp_revert(argument, header, pkt_data, tcp_header_length);
-        return res;
-    }
-    return 0;
+    ppkt->saddr = ip_protocol->saddr;
+    ppkt->daddr = ip_protocol->daddr;
+
+    return ip_protocol->proto;
 }
 
-int tcp_revert(
-    u_char* argument,
-    const struct pcap_pkthdr* header,
-    const u_char* pkt_data,
-    int& tcp_header_length
-) {
+int Http_identifier::tcp_revert() {
     struct tcp_header* tcp_protocol;
-    u_short sport;
-    u_short dport;
-    int header_length;
-    u_short windows;
-    u_short urgent_pointer;
-    u_int sequence;
-    u_int acknowledgement;
-    u_short checksum;
     u_char flags;
     int res;
-  
-    
-    tcp_protocol = (struct tcp_header*)(pkt_data + 14 + 20);//跳过mac协议和ip协议 
-    sport = ntohs(tcp_protocol->sport);
-    dport = ntohs(tcp_protocol->dport);
-    header_length = tcp_protocol->offset * 4;
-    sequence = ntohl(tcp_protocol->sequence);
-    acknowledgement = ntohl(tcp_protocol->ack);
-    windows = ntohs(tcp_protocol->windows);
-    urgent_pointer = ntohs(tcp_protocol->urgent_pointer);
+
+    //跳过mac协议和ip协议 
+    tcp_protocol = (struct tcp_header*)(pkt_data + 14 + 20);
+    ppkt->sport = ntohs(tcp_protocol->sport);
+    ppkt->dport = ntohs(tcp_protocol->dport);
+
+    ppkt->tcp_header_length = tcp_protocol->offset * 4;
+    ppkt->sequence = ntohl(tcp_protocol->sequence);
+    printf("sequence: %d\n", ppkt->sequence);
     flags = tcp_protocol->flags;
-    checksum = ntohs(tcp_protocol->checksum);
-    tcp_header_length = header_length;
-    printf("\nTCP:%d\n", header_length);
-    //printf("TCP: %d0%d%d%c%d\n", header_length, sport, dport, flags, windows);
-    //fprintf(fp, "%d0%d%d%c%d", header_length, sport, dport, flags, windows);
+
     if (flags & 0x08)
     {
-        printf("PSH"); 
-        printf("dport: %d, sport: %d\n", dport, sport);
+        cout<<"PSH"<<endl;
+        printf("dport: %d, sport: %d\n", ppkt->dport, ppkt->sport);
         return 0;
     }
     if (flags & 0x10) printf("ACK");
@@ -181,65 +65,65 @@ int tcp_revert(
     if (flags & 0x04) printf("RST");
     printf("\n");
 
-    printf("dport: %d, sport: %d\n", dport, sport);
-    if (dport == 80)
-    {
-        res=request_revert(argument, header, pkt_data, tcp_header_length);
-        return res;
-    }
-    else if(sport == 80)
-    {
-        res = respond_revert(argument, header, pkt_data, tcp_header_length);
-    }
+    printf("dport: %d, sport: %d\n", ppkt->dport, ppkt->sport);
     return 0;
-    
 }
 
-int request_revert(
-    u_char* argument,
-    const struct pcap_pkthdr* header,
+class Http_reverter {
+public:
+    u_char* argument;
+    struct pcap_pkthdr* header;
+    struct pkt_node* ppkt;
+    const u_char* pkt_data;
+    char* save_path;
+    void init(struct pcap_pkthdr* header,
+        const u_char* pkt_data, 
+        struct pkt_node* ppkt, char* save_path);
+
+};
+
+void Http_reverter::init(struct pcap_pkthdr* header,
     const u_char* pkt_data,
-    int tcp_header_length
-) {
-    int i;
+    struct pkt_node* ppkt, char* save_path) {
+    this->pkt_data = pkt_data;
+    this->header = header;
+    this->ppkt = ppkt;
+    this->save_path = save_path;
+}
+
+class Request_reverter : public Http_reverter {
+    int head_save();
+    int http_head_parse();
     char method[10];
     char URL[50];
     char http[10];
-    int http_start = 14 + 20 + tcp_header_length;
-    for (i = http_start; i < header->caplen ; i++)
-    {
-        printf("%c", pkt_data[i]); 
-        /*
-        int j = http_start;
-        for (int k = 0;pkt_data[j] != ' ';j++, k++){
-            method[k] = pkt_data[j];
-        }
-        for (int k = 0;pkt_data[j] != ' ';j++, k++) {
-            URL[k] = pkt_data[j];
-        }
-        */
-    }
-    return 0;
-}
+};
 
-int respond_revert(
-    u_char* argument,
-    const struct pcap_pkthdr* header,
-    const u_char* pkt_data,
-    int tcp_header_length
-) {
-    int i;
-    struct key_word key;//要初始化为0
+class Respond_reverter : public Http_reverter {
+public:
+    struct key_word key;
     char* content;
     int http_head_start;
     int http_body_start;
-    //Trie t;
-    http_head_start = 14 + 20 + tcp_header_length;
+    int head_save();//返回值0有http头,1 没有http头，-1读写操作出错
+    int http_head_parse();//返回0状态正确，1状态出错，-1读写操作出错
+    int http_handling(int& mark, struct key_word key_now);
+    int match_head(char* s);
+    int match_type(char* s);
+    int save_image(int mark);
+    int save_application(int mark);
+    int handle_txt(int mark);
+    int handle_chunked();
+};
+
+int Respond_reverter::head_save() {
+    int i;
+    key.seq = ppkt->sequence;
+    http_head_start = 14 + 20 + ppkt->tcp_header_length;
     if (pkt_data[http_head_start] == 'H' && pkt_data[http_head_start + 1] == 'T'
         && pkt_data[http_head_start + 2] == 'T' && pkt_data[http_head_start + 3] == 'P')
     {
         /* 将协议头部写入文件后按单词读取 */
-        //u_char不能直接写入文件，所以要用content转换成char之后再写入
         content = (char*)malloc(header->caplen * sizeof(char));
         for (i = http_head_start; i < header->caplen; i++)
         {
@@ -252,17 +136,66 @@ int respond_revert(
         }
         http_body_start = i + 4;
         content[i - http_head_start] = '\0';
-        FILE* temp;
-        temp = fopen("test2.txt", "w+");
-        fputs(content, temp);
-        fclose(temp);
-        http_head_parse(key);
-        http_handling(key, pkt_data, http_body_start);
-    }   
+
+        ofstream outfile;
+        try {
+            outfile.open(save_path);
+        }
+        catch (std::ios_base::failure& e) {
+            std::cerr << e.what() << endl;
+            return -1;
+        }
+        outfile << content << endl;
+        outfile.close();
+        return 0;
+    }
+    else {
+        return 1;
+    }    
+}
+
+int Respond_reverter::http_head_parse() {
+    //初始化key中的值为0，是0表示http头部没有出现改值
+    strcpy(key.Content_Encoding, "\0");
+    strcpy(key.Content_Length, "\0");
+    strcpy(key.Content_Type, "\0");
+    char http_version[10];
+    char status[10];
+    char modifier[10];
+    ifstream infile;
+    try {
+        infile.open(save_path);
+    }
+    catch (std::ios_base::failure& e) {
+        std::cerr << e.what() << endl;
+        return -1;
+    }
+    infile >> http_version;
+    infile >> status;
+    infile >> modifier;
+    if (strcmp(status, "200") != 0)
+    {
+        cout << "The respond is not correct!"<<endl;
+        cout << "The false status is " << status
+            << " " << modifier << endl;
+        return 1;
+    }
+    char  tmp1[50], tmp2[50];
+    while (infile >> tmp1) {
+        int type = match_head(tmp1);
+        if (type != 0 && type != 4) infile >> tmp2;
+        switch (type) {
+        case 1: strcpy(key.Content_Encoding, tmp2);break;
+        case 2: strcpy(key.Content_Length, tmp2);break;
+        case 3: strcpy(key.Content_Type, tmp2);break;
+        case 4: key.if_chunked = 1;break;
+        }
+    }
+    infile.close();
     return 0;
 }
 
-int match_head(char* s) {
+int Respond_reverter::match_head(char* s) {
     const struct key_mode mode;
     if (strcmp(s, mode.encoding) == 0)
         return 1;
@@ -276,7 +209,26 @@ int match_head(char* s) {
         return 0;
 }
 
-int match_type(char* s) {
+int Respond_reverter::http_handling(int& mark
+    ,struct key_word key_now) {
+    int start_seq = key_now.seq;
+    if (ppkt->sequence - start_seq <atoi(key_now.Content_Length)){
+        int res = 0;
+        if (key.Content_Type) {
+            res = match_type(key_now.Content_Type);
+            switch (res) {
+            case 1: save_image(mark);break;
+            case 2: save_application(mark);break;
+            case 3: handle_txt(mark);break;
+            default: cout << "This type can not be handled" << endl;return -1;
+            }
+        }        
+    }
+    else mark = 0;
+    return 0;
+}
+
+int Respond_reverter::match_type(char* s) {
     if (strstr(s, "image"))
         return 1;
     else if (strstr(s, "application"))
@@ -287,52 +239,7 @@ int match_type(char* s) {
         return 0;
 }
 
-
-int http_head_parse(struct key_word& key) {
-    char http_version[50];
-    char status[50];
-    char modifier[50];
-    FILE* fp;
-    fp = fopen("test2.txt", "r");
-    fscanf(fp, "%s %s %s", http_version, status, modifier);
-    while (1) {
-        char  tmp1[50], tmp2[50];
-        fscanf(fp, "%s", tmp1);
-        int type = match_head(tmp1);
-        //t.find(head_name, type);
-        if (type != 0 && type != 4) fscanf(fp, "%s", tmp2);
-        switch (type) {
-        case 1: strcpy(key.Content_Encoding, tmp2);break;
-        case 2: strcpy(key.Content_Length, tmp2);break;
-        case 3: strcpy(key.Content_Type, tmp2);break;
-        case 4: key.if_chunked = 1;break;
-        }
-        if (feof(fp)) break;
-    }
-    fclose(fp);
-    return 0;
-}
-
-int http_handling(struct key_word key, const u_char* pkt_data,
-int body_start) {
-    int res = 0;
-    if (key.Content_Type) {
-        res = match_type(key.Content_Type);
-        switch (res) {
-        case 1: save_image(key, pkt_data, body_start);break;
-        case 2: save_application(key, pkt_data, body_start);break;
-        case 3: handle_txt(key, pkt_data, body_start);break;
-        }
-    }
-    return 0;
-}
-
-void handle_chunked() {
-
-}
-
-int save_image(struct key_word key, const u_char* pkt_data,
-    int body_start) {
+int Respond_reverter::save_image(int mark) {
     if (key.Content_Encoding)
         printf("The image is encoded by %s\n", key.Content_Encoding);
     else
@@ -354,67 +261,167 @@ int save_image(struct key_word key, const u_char* pkt_data,
     return 0;
 }
 
-int save_application(struct key_word key, const u_char* pkt_data,
-    int body_start) {
-    char* data = (char*)pkt_data;
-    if (key.Content_Encoding)
-        printf("The application is encoded by %s", key.Content_Encoding);
-    else
-        printf("The application is not encoded.");
+int Respond_reverter::save_application(int mark) {
+    //mark=0表示是数据包的开头，有http头部
+    if (!mark) {
+        if (!strcmp(key.Content_Encoding, "\0"))
+            cout << "The application is not encoded." << endl;
+        else
+            cout << "The application is encoded by "
+            << key.Content_Encoding << endl;
+        ofstream outfile;
+        try {
+            outfile.open(save_path,ios::app);
+        }
+        catch (std::ios_base::failure& e) {
+            std::cerr << e.what() << endl;
+            return -1;
+        }
+        outfile << "Date" << __DATE__ << endl;
+        outfile.close();
+    }    
     if (key.if_chunked) {
         handle_chunked();
     }
     else {
-        FILE* fp;
-        fp = fopen("application.txt", "a+");
-        fprintf(fp, "Date: %s", __DATE__);
-        fputs(data + body_start, fp);
+        ofstream outfile;
+        try {
+            outfile.open(save_path,ios::app);
+        }
+        catch (std::ios_base::failure& e) {
+            std::cerr << e.what() << endl;
+            return -1;
+        }
+        outfile << &pkt_data[http_body_start] << endl;
+        outfile.close();
     }
     return 0;
 }
 
-int handle_txt(struct key_word key, const u_char* pkt_data,
-    int body_start) {
+int Respond_reverter::handle_txt(int mark) {
     return 0;
 }
-/*
-class Trie {
-public:
-    int nex[50][26], cnt;
-    bool exist[50];  // 该结点结尾的字符串是否存在
 
-    void insert(char* s) {  // 插入字符串
-        int p = 0;
-        int l = strlen(s);
-        for (int i = 0; i < l; i++) {
-            if ('A' <= s[i] <= 'Z')
-                s[i] = s[i] + 32;//统一大小写，不区分查找
-            int c = s[i] - 'a';
-            if (!nex[p][c]) nex[p][c] = ++cnt;  // 如果没有，就添加结点
-            p = nex[p][c];
-        }
-        exist[p] = 1;
-    }
-
-    bool find(char* s, int& type) {  // 查找字符串
-        int p = 0;
-        int l = strlen(s);
-        for (int i = 0; i < l; i++) {
-            if ('A' <= s[i] <= 'Z')
-                s[i] = s[i] + 32;//统一大小写，不区分查找
-            int c = s[i] - 'a';
-            if (!nex[p][c]) return 0;
-            p = nex[p][c];
-        }
-        type = p;
-        return exist[p];
-    }
-};
-
-void create_trie(Trie t) {
-    t.insert("Content-T");
-    t.insert("Content-Le");
-    t.insert("Content-E");
-    t.insert("chunked");
+int Respond_reverter::handle_chunked() {
+    return 0;
 }
-*/
+
+int packet_revert()
+{
+    struct pcap_pkthdr* header;
+    const u_char* pkt_data;
+    pcap_t* fp;
+    pcap_dumper_t* dumpfile;
+    char errbuf[PCAP_ERRBUF_SIZE];
+    const char* path = "test.txt";
+    char source[PCAP_BUF_SIZE];
+    int res = 0;
+    int i = 0;
+
+    /* 读取转存的数据包 */
+    /* Create the source string according to the new WinPcap syntax */
+    if (pcap_createsrcstr(source,         // variable that will keep the source string
+        PCAP_SRC_FILE,  // we want to open a file
+        NULL,           // remote host
+        NULL,           // port on the remote host
+        path,        // name of the file we want to open
+        errbuf          // error buffer
+    ) != 0){
+        fprintf(stderr, "\nError creating a source string\n");
+        return -1;
+    }
+
+    /* Open the capture file */
+    if ((fp = pcap_open(source,         // name of the device
+        65536,          // portion of the packet to capture
+                        // 65536 guarantees that the whole packet will be captured on all the link layers
+        PCAP_OPENFLAG_PROMISCUOUS,     // promiscuous mode 混合模式
+        1000,              // read timeout
+        NULL,              // authentication on the remote machine
+        errbuf         // error buffer
+    )) == NULL){
+        fprintf(stderr, "\nUnable to open the file %s.\n", source);
+        return -1;
+    }
+
+    int mark = 0;
+    int start_seq = 0;
+    struct key_word key_now;
+    while ((res = pcap_next_ex(fp, &header, &pkt_data)) >= 0)
+    {
+        struct pkt_node pkt;
+        struct pkt_node* ppkt;
+        ppkt = &pkt;
+        int is_HTTP = propotoral_identify(header, pkt_data, ppkt);
+        if (is_HTTP == 0) {
+            ;
+        }
+        else if (is_HTTP == 1) {
+            if (ppkt->dport == 80) {
+
+            }
+            else {
+                int res=0;
+                Respond_reverter reverter;
+                char* save_path = "test2.txt";
+                reverter.init(header, pkt_data, ppkt, save_path);
+                res=reverter.head_save();
+                //有http头，表示是新数据的开头
+                //设置mark，start_seq, key和length
+                if (res == 0) {
+                    res=reverter.http_head_parse();
+                    if (res == 1) continue;
+                    //表示状态不正确，进行下一轮
+                    if (mark) {
+                        cout << "sequence is error" << endl;
+                        //出现乱序，上一个数据包的数据还未完整接收
+                    }
+                    start_seq = ppkt->sequence;
+                    key_now = reverter.key;
+                    reverter.http_handling(mark, key_now);
+                    mark = 1;
+                }
+                else if (res == 1) {
+                    reverter.http_body_start = reverter.http_head_start;
+                    reverter.http_handling(mark, key_now);
+                }
+                else
+                    return -1;
+            }            
+        }
+    }
+        
+    if (res == -1){
+        printf("Error reading the packets: %s\n", pcap_geterr(fp));
+        return -1;
+    }
+
+    return 0;       
+}
+
+int propotoral_identify(struct pcap_pkthdr* header,
+    const u_char* pkt_data, struct pkt_node* ppkt) {
+    int res = -1;
+    Http_identifier identifier;
+    identifier.init(header, pkt_data, ppkt);
+    int ip_proto = 0;
+    ip_proto = identifier.ip_revert();
+    if (ip_proto == 6) identifier.tcp_revert();
+    else cout << "is not HTTP" << endl;
+    if (ppkt->dport == 80)
+    {
+        cout << "request HTTP" << endl;
+        res = 0;
+    }
+    else if (ppkt->sport == 80)
+    {
+        cout << "respond HTTP" << endl;
+        res = 1;
+    }
+    else cout << "is not HTTP" << endl;
+    cout << endl;
+    return res;
+}
+
+
+

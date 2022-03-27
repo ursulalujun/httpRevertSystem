@@ -1,9 +1,0 @@
-HTTP/1.1 200 OK
-Server: nginx/1.16.1
-Date: Mon, 21 Mar 2022 14:00:04 GMT
-Content-Type: application/javascript
-Content-Length: 44355
-Last-Modified: Sun, 29 Nov 2020 08:04:37 GMT
-Connection: keep-alive
-ETag: "5fc35615-ad43"
-Accept-Ranges: bytes

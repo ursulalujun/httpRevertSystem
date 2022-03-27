@@ -1,23 +1,36 @@
-#include "capture.h"
+#include "pcap.h"
 
-int packet_capture(int cnt){  
+class Pkt_capturer {
+public:
+    int cnt;
     pcap_if_t* d;
     pcap_t* adhandle;
-    int res;
-    
-    //d和adhandle有什么区别？
-    res = get_device(d, adhandle);
+    pcap_dumper_t* dumpfile;
+    int get_device();
+    int set_filter();
+    int save_packet();   
+};
+
+// Callback function invoked by libpcap for every incoming packet 
+void packet_handler(u_char* dumpfile,
+    const struct pcap_pkthdr* header, const u_char* pkt_data);
+
+int packet_capture(int cnt) {
+    Pkt_capturer Capturer;   
+    int res = 0;//返回值，0表示正确，-1表示出错
+    Capturer.cnt = cnt;
+    res = Capturer.get_device();
     if (res) return -1;
 
-    res = set_filter(d, adhandle);
+    res = Capturer.set_filter();
     if (res) return -1;
 
-    res = save_packet(adhandle, cnt);
+    res = Capturer.save_packet();
     return res;
 
 }
 
-int get_device(pcap_if_t*& d, pcap_t*& adhandle){
+int Pkt_capturer::get_device(){
     pcap_if_t* alldevs;
     int inum;
     int i = 0;
@@ -77,7 +90,7 @@ int get_device(pcap_if_t*& d, pcap_t*& adhandle){
     return 0;
 }
 
-int set_filter(pcap_if_t*& d, pcap_t*& adhandle){
+int Pkt_capturer::set_filter(){
     u_int netmask;
     char packet_filter[] = "tcp port 80";//若没有指定，默认dst or src
     struct bpf_program fcode;
@@ -108,8 +121,6 @@ int set_filter(pcap_if_t*& d, pcap_t*& adhandle){
     if (pcap_setfilter(adhandle, &fcode) < 0)
     {
         fprintf(stderr, "\nError setting the filter.\n");
-        /* Free the device list */
-        //pcap_freealldevs(alldevs);
         return -1;
     }
 
@@ -120,16 +131,9 @@ int set_filter(pcap_if_t*& d, pcap_t*& adhandle){
     return 0;
 }
 
-int save_packet(pcap_t*& adhandle, int cnt){
-    struct tm ltime;
-    char timestr[16];
-    struct pcap_pkthdr* header;
-    const u_char* pkt_data;
-    time_t local_tv_sec;
-    pcap_t* fp;
-    pcap_dumper_t* dumpfile;
+int Pkt_capturer::save_packet(){
+    
     const char* path = "test.txt";
-
     dumpfile = pcap_dump_open(adhandle, path);
     /* start the capture 监听+转存*/
     pcap_loop(adhandle, cnt, packet_handler, (unsigned char*)dumpfile);
@@ -137,9 +141,8 @@ int save_packet(pcap_t*& adhandle, int cnt){
 }
 
 
-/* Callback function invoked by libpcap for every incoming packet */
-
-void packet_handler(u_char* dumpfile, const struct pcap_pkthdr* header, const u_char* pkt_data){
+void packet_handler(u_char* dumpfile, 
+    const struct pcap_pkthdr* header, const u_char* pkt_data){
     struct tm ltime;
     char timestr[16];
     time_t local_tv_sec;
@@ -154,25 +157,5 @@ void packet_handler(u_char* dumpfile, const struct pcap_pkthdr* header, const u_
     strftime(timestr, sizeof timestr, "%H:%M:%S", &ltime);
     printf("%s,%.6d len:%d\n", timestr, header->ts.tv_usec, header->len);
     
-    /* 调试代码
-    ip_header* ih;
-    u_int ip_len;
-    //retireve the position of the ip header 
-    ih = (ip_header*)(pkt_data +
-        14); //length of ethernet header
-
-    ip_len = (ih->ver_ihl & 0xf) * 4;
-    printf("\n%.2x\n", ip_len);
-    printf("\n%.2x\n", ih->proto);
-
-    printf("%ld:%ld (%ld)\n", header->ts.tv_sec, header->ts.tv_usec, header->len);
-
-    for (i = 1; (i < header->caplen + 1); i++)
-    {
-        printf("%.2x ", pkt_data[i - 1]);
-        if ((i % 16) == 0) printf("\n");
-    }
-    printf("\n\n");
-    */
 }
 

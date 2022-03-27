@@ -32,7 +32,7 @@ struct ip_header {
 // 保存TCP首部
 struct tcp_header {
     u_short sport;
-    u_short dport;
+    u_short dport;    
     u_int sequence;		// 序列码
     u_int ack;					// 回复码
 
@@ -49,10 +49,11 @@ struct tcp_header {
 };
 
 struct key_word {
+    int seq=0;
     char Content_Type[20];
     char Content_Length[20];
     char Content_Encoding[20];
-    bool if_chunked;
+    bool if_chunked=0;
 };
 
 struct key_mode {
@@ -62,36 +63,16 @@ struct key_mode {
     char* chunked = "chunked";
 };
 
-//class Trie;
+struct pkt_node {
+    u_short sport;
+    u_short dport;
+    ip_address  saddr;      
+    ip_address  daddr;      
+    u_long sequence;
+    int tcp_flag;
+    int tcp_header_length;    
+};
 
-int read_file(struct pcap_pkthdr*& header,
-    const u_char*& pkt_data);
-int ip_revert(u_char* argument,
-    const struct pcap_pkthdr* header,
-    const u_char* pkt_data);
-int tcp_revert(u_char* argument,
-    const struct pcap_pkthdr* header,
-    const u_char* pkt_data,
-    int& tcp_header_length);
-int request_revert(u_char* argument,
-    const struct pcap_pkthdr* header,
-    const u_char* pkt_data,
-    int tcp_header_length);
-int respond_revert(u_char* argument,
-    const struct pcap_pkthdr* header,
-    const u_char* pkt_data,
-    int tcp_header_length);
-
-//void create_trie(Trie t);
-int match_head(char* s);
-int match_type(char* s);
-int http_head_parse(struct key_word& key);
-int http_handling(struct key_word key, const u_char* pkt_data,
-    int body_start);
-void handle_chunked();
-int save_image(struct key_word key, const u_char* pkt_data,
-    int body_start);
-int save_application(struct key_word key, const u_char* pkt_data,
-    int body_start);
-int handle_txt(struct key_word key, const u_char* pkt_data,
-    int body_start);
+int packet_revert();
+int propotoral_identify(struct pcap_pkthdr* header,
+    const u_char* pkt_data, struct pkt_node* ppkt);

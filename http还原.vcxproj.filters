@@ -26,10 +26,10 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="capture.h">
+    <ClInclude Include="revert.h">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="revert.h">
+    <ClInclude Include="capture.h">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>
