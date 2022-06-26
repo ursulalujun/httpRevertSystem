@@ -1,0 +1,13 @@
+﻿  main.cpp
+  协议解析.cpp
+D:\Documents\综合课设\http还原\协议解析.cpp(28,9): warning C4101: “tcp_header_length”: 未引用的局部变量
+D:\Documents\综合课设\http还原\协议解析.cpp(42,9): warning C4101: “res”: 未引用的局部变量
+D:\Documents\综合课设\http还原\协议解析.cpp(129,25): warning C4018: “<”: 有符号/无符号不匹配
+D:\Documents\综合课设\http还原\协议解析.cpp(132,37): warning C4018: “<”: 有符号/无符号不匹配
+D:\Documents\综合课设\http还原\协议解析.cpp(210,37): warning C4018: “<”: 有符号/无符号不匹配
+D:\Documents\综合课设\http还原\协议解析.cpp(314,33): warning C4018: “<”: 有符号/无符号不匹配
+D:\Documents\综合课设\http还原\协议解析.cpp(420,12): warning C4477: “printf”: 格式字符串“%d”需要类型“int”的参数，但可变参数 1 拥有了类型“ip_address”
+D:\Documents\综合课设\http还原\协议解析.cpp(420,12): warning C4477: “printf”: 格式字符串“%d”需要类型“int”的参数，但可变参数 2 拥有了类型“ip_address”
+D:\Documents\综合课设\http还原\协议解析.cpp(431,20): warning C4101: “dumpfile”: 未引用的局部变量
+  正在生成代码...
+  http还原.vcxproj -> D:\Documents\综合课设\http还原\Debug\http还原.exe

@@ -1,0 +1,9 @@
+HTTP/1.1 200 OK
+Server: nginx/1.16.1
+Date: Tue, 07 Jun 2022 14:08:59 GMT
+Content-Type: image/png
+Content-Length: 1271
+Last-Modified: Sun, 29 Nov 2020 07:55:45 GMT
+Connection: keep-alive
+ETag: "5fc35401-4f7"
+Accept-Ranges: bytes

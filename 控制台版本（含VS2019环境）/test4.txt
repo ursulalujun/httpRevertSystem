@@ -1,0 +1,10 @@
+GET /v.gif?pid=307&type=3075&l=57880&t=0&s=57880&v=689&f=8000&r=http%3A%2F%2Fwww.51pptmoban.com%2Fsucai%2F&u=http%3A%2F%2Fwww.51pptmoban.com%2Fsucai%2F11777.html HTTP/1.1
+Host: nsclick.baidu.com
+Connection: keep-alive
+Cache-Control: max-age=0
+User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/100.0.4896.127 Safari/537.36 Edg/100.0.1185.50
+Accept: */*
+Referer: http://www.51pptmoban.com/
+Accept-Encoding: gzip, deflate
+Accept-Language: zh-CN,zh;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6
+------request http head-----
